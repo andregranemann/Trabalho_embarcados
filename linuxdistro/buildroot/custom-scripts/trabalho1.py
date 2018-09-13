@@ -1,9 +1,8 @@
-#!/usr/bin/env python
+import SimpleHTTPServer
+import SocketServer
+import os.path
 import os, platform, subprocess, re
 import datetime
-from typing import Any, Union
-
-now=datetime.datetime.now()
 
 def get_processor_name():
     if platform.system() == "Windows":
@@ -72,35 +71,77 @@ def MemUsage():
 
     strg = '%sMb / %sMb' %(mem_U, tot)
     return strg
+    
+def getPIDS():
+	pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
+	strg = "\n"
+	for pid in pids:
+		try:
+			strg1=open(os.path.join('/proc', pid, 'cmdline'), 'rb').read().split('\0')
+			strg=strg+strg1
+		except IOError: # proc has already terminated
+			continue
+			
+	return strg
+
+	
 
 
 
 
-arquivo = open('index.html', 'w')
 
-html= """<!DOCTYPE html>
-<html>
-<body>
 
-<h1>Target do sistema</h1>
 
-<p> Uptime do sistema: %s segundos</p>
+#arquivo = open('index.html', 'w')
 
-<p> Nome do processador: %s </p>
 
-<p> Uso do processador: %s </p>
+#arquivo.write(html)
+#arquivo.close()
 
-<p> HD usado / total: %s </p>
 
-<p> RAM usada / total: %s </p>
+class MyRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    # Build the html file for every connection.    
+    def makeindex(self):
+        tofile= """<!DOCTYPE html>
+        <html>
+        <body>
 
-<p> Versão do sistema: %s </p>
+        <h1>Target do sistema</h1>
 
-<p>Relatório gerado em: %s</p>
+        <p> Uptime do sistema: %s segundos</p>
 
-</body>
-</html>
-""" %(str(get_uptime()), platform.processor(), str(round(get_cpu_usage(),2))+'%', str(HardDiskUsage()),
-      str(MemUsage()), str(platform.version()), str(now.strftime('%d/%m/%Y %H:%M:%S')))
-arquivo.write(html)
-arquivo.close()
+        <p> Nome do processador: %s </p>
+
+        <p> Uso do processador: %s </p>
+
+        <p> RAM usada / total: %s </p>
+
+        <p> Versao do sistema: %s </p>
+
+        <p>Relatorio gerado em: %s</p>
+        
+        <p> Lista de Processos em execucao:</p>
+        
+        <p> %s </p>
+
+        </body>
+        </html>
+        """ % (str(get_uptime()), str(get_processor_name()), str(round(get_cpu_usage(), 2)) + '%', 'xxx',
+               str(platform.version()), str(datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')), getPIDS())
+        f = open("index.html", "w")
+        f.write(tofile)
+        f.close()
+        return
+
+    # Method http GET.
+    def do_GET(self):
+        self.makeindex()
+        self.path = '/index.html'
+        return SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+
+
+# Start the webserver.
+Handler = MyRequestHandler
+server = SocketServer.TCPServer(('0.0.0.0', 8080), Handler)
+server.serve_forever()
+

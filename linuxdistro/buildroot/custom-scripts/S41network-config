@@ -8,8 +8,8 @@
   	printf "Configuring host communication."
   	
   	/sbin/ifconfig eth0 192.168.1.10 up
-  	/sbin/route add -host 150.162.239.80 dev eth0
-  	/sbin/route add default gw 150.162.239.80
+  	/sbin/route add -host 150.162.238.171 dev eth0
+  	/sbin/route add default gw 150.162.238.171
   	[ $? = 0 ] && echo "OK" || echo "FAIL"
   	;;
     stop)
