@@ -3,6 +3,7 @@ import SocketServer
 import os.path
 import os, platform, subprocess, re
 import datetime
+import psutil
 
 def get_processor_name():
     if platform.system() == "Windows":
@@ -40,61 +41,33 @@ def get_uptime():
      total_seconds = float(contents[0])
      return total_seconds;
 
-
-def getFree():
-    free = os.popen("free -h")
-    i = 0
-    while True:
-        i = i + 1
-        line = free.readline()
-        if i == 2:
-            return (line.split()[0:7])
-
-def HardDiskUsage():
-    mem = getFree()
-    strg='%sb / %sb' %(mem[2], mem[1])
-    return strg
-
-def MemUsage():
-    mem = str(os.popen('free -t -m').readlines())
-    T_ind = mem.index('T')
-
-    mem_G = mem[T_ind + 14:-4]
-
-    S1_ind = mem_G.index(' ')
-    mem_T = mem_G[0:S1_ind]
-    mem_G1 = mem_G[S1_ind + 8:]
-    S2_ind = mem_G1.index(' ')
-    mem_U = mem_G1[0:S2_ind]
-
-    tot=round(float(mem_T)-float(mem_U))
-
-    strg = '%sMb / %sMb' %(mem_U, tot)
-    return strg
-    
-def getPIDS():
-	pids = [pid for pid in os.listdir('/proc') if pid.isdigit()]
-	strg = "\n"
-	for pid in pids:
-		try:
-			strg1=open(os.path.join('/proc', pid, 'cmdline'), 'rb').read().split('\0')
-			strg=strg+strg1
-		except IOError: # proc has already terminated
-			continue
+def getRAMinfo():
 			
-	return strg
+			p = os.popen('free')
+			i = 0
+			while 1:
+				i = i + 1
+				line = p.readline()
+        
+				if i==2:
+					memT=int(line.split()[1])/1000
+					memU=int(line.split()[2])/1000
+					mem = str(memU) + "Mb /" + str(memT) + "Mb"
+					return mem
 
-	
-
-
-
-
-
+def getPID():
+	list_proc = ""
+	for proc in psutil.process_iter():
+		try:
+			pinfo = proc.as_dict(attrs=['pid', 'name', 'username'])
+		except psutil.NoSuchProcess:
+			pass
+		else:
+			list_proc += "<p>" + str(pinfo) + "</p>"
+	return list_proc    
 
 
 #arquivo = open('index.html', 'w')
-
-
 #arquivo.write(html)
 #arquivo.close()
 
@@ -121,13 +94,12 @@ class MyRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         <p>Relatorio gerado em: %s</p>
         
         <p> Lista de Processos em execucao:</p>
-        
-        <p> %s </p>
-
+        %s
+       
         </body>
         </html>
-        """ % (str(get_uptime()), str(get_processor_name()), str(round(get_cpu_usage(), 2)) + '%', 'xxx',
-               str(platform.version()), str(datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')), getPIDS())
+        """ % (str(get_uptime()), str(get_processor_name()), str(round(get_cpu_usage(), 2)) + '%', getRAMinfo(),
+               str(platform.version()), str(datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')), str(getPID()))
         f = open("index.html", "w")
         f.write(tofile)
         f.close()
